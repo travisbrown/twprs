@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::io::{Read, Write};
 
 pub fn writer<W: Write>(writer: W) -> Writer<'static, W> {
-    Writer::with_codec(&USER_AVRO_SCHEMA, writer, Codec::Snappy)
+    Writer::with_codec(&USER_AVRO_SCHEMA, writer, Codec::Zstandard)
 }
 
 pub fn reader<R: Read>(reader: R) -> Result<Reader<'static, R>, Error> {
@@ -20,7 +20,6 @@ pub fn validate<R: Read>(reader: Reader<'static, R>) -> Result<usize, Validation
 
     for (line_number, value) in reader.enumerate() {
         let user = apache_avro::from_value::<User>(&value?)?;
-        //println!("{}: {:?}", line_number, user);
 
         if user.snapshot < last_snapshot {
             misordered_line_numbers.push(line_number);
@@ -29,7 +28,6 @@ pub fn validate<R: Read>(reader: Reader<'static, R>) -> Result<usize, Validation
                 misordered_line_numbers.push(line_number);
             } else if user.id == last_user_id {
                 duplicate_line_numbers.push(line_number);
-                //panic!("done");
             }
         }
 
