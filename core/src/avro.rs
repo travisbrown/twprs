@@ -4,11 +4,11 @@ use std::collections::HashMap;
 use std::io::{Read, Write};
 
 pub fn writer<W: Write>(writer: W) -> Writer<'static, W> {
-    Writer::with_codec(&USER_AVRO_SCHEMA, writer, Codec::Zstandard)
+    Writer::with_codec(&USER_SCHEMA, writer, Codec::Snappy)
 }
 
 pub fn reader<R: Read>(reader: R) -> Result<Reader<'static, R>, Error> {
-    Ok(Reader::with_schema(&USER_AVRO_SCHEMA, reader)?)
+    Ok(Reader::with_schema(&USER_SCHEMA, reader)?)
 }
 
 pub fn validate<R: Read>(reader: Reader<'static, R>) -> Result<usize, ValidationError> {
@@ -81,7 +81,7 @@ pub enum ValidationError {
 }
 
 lazy_static::lazy_static! {
-    static ref USER_AVRO_SCHEMA: Schema = load_user_avro_schema().unwrap();
+    pub static ref USER_SCHEMA: Schema = load_user_avro_schema().unwrap();
 }
 
 fn load_user_avro_schema() -> Result<Schema, Error> {

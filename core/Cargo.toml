@@ -6,7 +6,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-apache-avro = { git = "https://github.com/apache/avro", features = ["snappy", "zstandard"] }
+apache-avro = { git = "https://github.com/apache/avro", features = ["snappy"] }
 bzip2 = "0.4"
 chrono = "0.4"
 clap = { version = "3", features = ["derive"] }
