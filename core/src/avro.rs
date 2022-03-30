@@ -85,7 +85,7 @@ lazy_static::lazy_static! {
 }
 
 fn load_user_avro_schema() -> Result<Schema, Error> {
-    let source = std::fs::read_to_string("schemas/avro/user.avsc")?;
+    let source = std::include_str!("../../schemas/avro/user.avsc");
 
     Ok(Schema::parse_str(&source)?)
 }
