@@ -1,5 +1,8 @@
 [workspace]
 
 members = [
+    "bouncer",
     "core",
+    "db",
+    "scraper",
 ]
