@@ -1,9 +1,7 @@
-use chrono::{Date, NaiveDate, TimeZone, Utc};
 use clap::Parser;
 use flate2::read::GzDecoder;
-use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::io::{BufRead, BufReader, Lines, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use twprs::model::User;
 

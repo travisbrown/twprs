@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::io::{Read, Write};
 
 pub fn writer<W: Write>(writer: W) -> Writer<'static, W> {
-    Writer::with_codec(&USER_AVRO_SCHEMA, writer, Codec::Zstandard)
+    Writer::with_codec(&USER_AVRO_SCHEMA, writer, Codec::Snappy)
 }
 
 pub fn reader<R: Read>(reader: R) -> Result<Reader<'static, R>, Error> {

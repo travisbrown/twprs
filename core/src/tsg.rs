@@ -5,7 +5,6 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::Path;
-use tar::Archive;
 use zip::ZipArchive;
 
 #[derive(thiserror::Error, Debug)]
@@ -33,8 +32,8 @@ fn extract_bz_lines<R: Read>(source: R) -> impl Iterator<Item = Result<Vec<User>
 
 pub fn extract<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> Result<(), Error> {
     let zip_extension = OsStr::new("zip");
-    let tar_extension = OsStr::new("tar");
-    let bz2_extension = OsStr::new("bz2");
+    let _tar_extension = OsStr::new("tar");
+    let _bz2_extension = OsStr::new("bz2");
     let path = path.as_ref();
 
     if path.extension() == Some(zip_extension) {
