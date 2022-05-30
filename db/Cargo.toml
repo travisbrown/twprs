@@ -13,7 +13,7 @@ egg-mode-extras = "0.2.1"
 log = "0.4"
 rocksdb = "0.18"
 serde_json = { version = "1", features = ["preserve_order"] }
-simplelog = "0.11"
+simplelog = "0.12"
 thiserror = "1"
 twprs = { path = "../core" }
 

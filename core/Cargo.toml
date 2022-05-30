@@ -24,7 +24,7 @@ regex = "1.5.5"
 serde = { version = "1", features = ["derive"] }
 serde_derive = "1"
 serde_json = { version = "1", features = ["preserve_order"] }
-simplelog = "0.11"
+simplelog = "0.12"
 tar = "0.4"
 thiserror = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
