@@ -69,6 +69,7 @@ fn main() -> Result<(), Error> {
             );
         }
         Command::Stats => {
+            println!("Estimate the number of keys: {}", db.estimate_key_count()?);
             println!("{:?}", db.statistics());
         }
         Command::ScreenNames => {

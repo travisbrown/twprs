@@ -47,6 +47,12 @@ impl ProfileDb {
         })
     }
 
+    pub fn estimate_key_count(&self) -> Result<usize, Error> {
+        let value = self.db.property_int_value("rocksdb.estimate-num-keys")?;
+
+        Ok(value.map(|value| value as usize).unwrap_or_default())
+    }
+
     pub fn statistics(&self) -> Option<String> {
         self.options.get_statistics()
     }
@@ -77,7 +83,9 @@ impl ProfileDb {
 
     pub fn iter(&self) -> ProfileIterator<DBIterator> {
         ProfileIterator {
-            underlying: self.db.iterator(IteratorMode::Start),
+            underlying: self
+                .db
+                .iterator(IteratorMode::From(&[], rocksdb::Direction::Forward)),
             current: None,
             finished: false,
         }
@@ -86,17 +94,19 @@ impl ProfileDb {
     pub fn raw_iter(
         &self,
     ) -> impl Iterator<Item = Result<(u64, (DateTime<Utc>, User)), Error>> + '_ {
-        self.db.iterator(IteratorMode::Start).map(|(key, value)| {
-            let user_id = u64::from_be_bytes(
-                key[0..8]
-                    .try_into()
-                    .map_err(|_| Error::InvalidKey(key.to_vec()))?,
-            );
+        self.db
+            .iterator(IteratorMode::From(&[], rocksdb::Direction::Forward))
+            .map(|(key, value)| {
+                let user_id = u64::from_be_bytes(
+                    key[0..8]
+                        .try_into()
+                        .map_err(|_| Error::InvalidKey(key.to_vec()))?,
+                );
 
-            let (timestamp, user) = parse_value(value)?;
+                let (timestamp, user) = parse_value(value)?;
 
-            Ok((user_id, (timestamp, user)))
-        })
+                Ok((user_id, (timestamp, user)))
+            })
     }
 
     pub fn update(&self, user: &User) -> Result<(), Error> {
