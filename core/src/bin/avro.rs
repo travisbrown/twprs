@@ -1,5 +1,6 @@
 use clap::Parser;
 use flate2::read::GzDecoder;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
@@ -33,6 +34,53 @@ fn main() -> Result<(), Error> {
                 let user = apache_avro::from_value::<User>(&value?)?;
 
                 println!("{},{}", user.id(), user.snapshot);
+            }
+        }
+        Command::DumpIds { input } => {
+            let stdin = std::io::stdin();
+            let user_ids = stdin
+                .lock()
+                .lines()
+                .map(|line| line.unwrap().parse::<u64>().unwrap())
+                .collect::<HashSet<_>>();
+
+            let mut paths = std::fs::read_dir(input)?
+                .map(|entry| entry.map(|entry| entry.path()))
+                .collect::<Result<Vec<_>, _>>()?;
+            paths.sort();
+
+            for path in paths {
+                let reader = twprs::avro::reader(File::open(path)?)?;
+
+                for value in reader {
+                    let user = apache_avro::from_value::<User>(&value?)?;
+                    if user_ids.contains(&user.id()) {
+                        println!("{}", serde_json::json!(user));
+                    }
+                }
+            }
+        }
+        Command::DisplayNameSearch { input, query } => {
+            let mut paths = std::fs::read_dir(input)?
+                .map(|entry| entry.map(|entry| entry.path()))
+                .collect::<Result<Vec<_>, _>>()?;
+            paths.sort();
+
+            let mut seen_ids = HashSet::new();
+
+            for path in paths {
+                let reader = twprs::avro::reader(File::open(path)?)?;
+
+                for value in reader {
+                    let user = apache_avro::from_value::<User>(&value?)?;
+
+                    if seen_ids.contains(&user.id()) {
+                        println!("{}", serde_json::json!(user));
+                    } else if user.name.to_lowercase().contains(&query) {
+                        seen_ids.insert(user.id());
+                        println!("{}", serde_json::json!(user));
+                    }
+                }
             }
         }
     }
@@ -113,5 +161,18 @@ enum Command {
         /// Input path
         #[clap(short, long)]
         input: String,
+    },
+    DumpIds {
+        /// Input directory path
+        #[clap(short, long)]
+        input: String,
+    },
+    DisplayNameSearch {
+        /// Input directory path
+        #[clap(short, long)]
+        input: String,
+        /// Search query
+        #[clap(short, long)]
+        query: String,
     },
 }
