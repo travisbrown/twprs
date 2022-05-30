@@ -83,6 +83,22 @@ impl ProfileDb {
         }
     }
 
+    pub fn raw_iter(
+        &self,
+    ) -> impl Iterator<Item = Result<(u64, (DateTime<Utc>, User)), Error>> + '_ {
+        self.db.iterator(IteratorMode::Start).map(|(key, value)| {
+            let user_id = u64::from_be_bytes(
+                key[0..8]
+                    .try_into()
+                    .map_err(|_| Error::InvalidKey(key.to_vec()))?,
+            );
+
+            let (timestamp, user) = parse_value(value)?;
+
+            Ok((user_id, (timestamp, user)))
+        })
+    }
+
     pub fn update(&self, user: &User) -> Result<(), Error> {
         let key = Self::make_key(user.id, &user.screen_name);
         let avro_value = to_value(user)?;
