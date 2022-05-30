@@ -76,4 +76,11 @@ impl User {
     pub fn created_at(&self) -> Result<DateTime<Utc>, chrono::ParseError> {
         super::util::parse_date_time(&self.created_at)
     }
+
+    pub fn expanded_url(&self) -> Option<String> {
+        let entities = self.entities.as_ref()?;
+        let entity = entities.url.as_ref()?;
+        let first_url = entity.urls.first()?;
+        first_url.expanded_url.clone()
+    }
 }

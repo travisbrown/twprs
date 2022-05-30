@@ -1,5 +1,6 @@
 use clap::Parser;
 use flate2::read::GzDecoder;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
@@ -35,6 +36,92 @@ fn main() -> Result<(), Error> {
                 println!("{},{}", user.id(), user.snapshot);
             }
         }
+        Command::DumpIds { input } => {
+            let stdin = std::io::stdin();
+            let user_ids = stdin
+                .lock()
+                .lines()
+                .map(|line| line.unwrap().parse::<u64>().unwrap())
+                .collect::<HashSet<_>>();
+
+            let mut paths = std::fs::read_dir(input)?
+                .map(|entry| entry.map(|entry| entry.path()))
+                .collect::<Result<Vec<_>, _>>()?;
+            paths.sort();
+
+            for path in paths {
+                let reader = twprs::avro::reader(File::open(path)?)?;
+
+                for value in reader {
+                    let user = apache_avro::from_value::<User>(&value?)?;
+                    if user_ids.contains(&user.id()) {
+                        println!("{}", serde_json::json!(user));
+                    }
+                }
+            }
+        }
+        Command::DisplayNameSearch { input, query } => {
+            let mut paths = std::fs::read_dir(input)?
+                .map(|entry| entry.map(|entry| entry.path()))
+                .collect::<Result<Vec<_>, _>>()?;
+            paths.sort();
+
+            let mut seen_ids = HashSet::new();
+
+            for path in paths {
+                let reader = twprs::avro::reader(File::open(path)?)?;
+
+                for value in reader {
+                    let user = apache_avro::from_value::<User>(&value?)?;
+
+                    if seen_ids.contains(&user.id()) {
+                        println!("{}", serde_json::json!(user));
+                    } else if user.name.to_lowercase().contains(&query) {
+                        seen_ids.insert(user.id());
+                        println!("{}", serde_json::json!(user));
+                    }
+                }
+            }
+        }
+        Command::RtSearch { input } => {
+            let mut paths = std::fs::read_dir(input)?
+                .map(|entry| entry.map(|entry| entry.path()))
+                .collect::<Result<Vec<_>, _>>()?;
+            paths.sort();
+
+            let mut seen_ids = HashSet::new();
+
+            for path in paths {
+                let reader = twprs::avro::reader(File::open(path)?)?;
+
+                for value in reader {
+                    let user = apache_avro::from_value::<User>(&value?)?;
+
+                    if seen_ids.contains(&user.id()) {
+                        println!("{}", serde_json::json!(user));
+                    } else {
+                        let display_name = user.name.to_lowercase();
+                        let description = user
+                            .description
+                            .as_ref()
+                            .unwrap_or(&"".to_string())
+                            .to_lowercase();
+                        let url = user.expanded_url().unwrap_or_default().to_lowercase();
+
+                        if url.contains("//rt")
+                            || display_name.contains("sputnik")
+                            || description.contains("sputnik")
+                            || url.contains("sputnik")
+                            || display_name.contains("@rt_")
+                            || description.contains("@rt_")
+                        {
+                            seen_ids.insert(user.id());
+                            println!("{}", serde_json::json!(user));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Ok(())
@@ -48,10 +135,11 @@ fn write_from_path<P: AsRef<Path>, W: Write>(
     let lines = lines(path)?;
 
     for (i, line) in lines.enumerate() {
-        let user = match serde_json::from_str::<User>(&line?) {
+        let line = line?;
+        let user = match serde_json::from_str::<User>(&line) {
             Ok(value) => value,
             Err(error) => {
-                panic!("At {}: {:?}", i, error);
+                panic!("At {}: {:?}\n{}", i, error, line);
             }
         };
         writer.append_ser(user)?;
@@ -111,6 +199,24 @@ enum Command {
     },
     Dump {
         /// Input path
+        #[clap(short, long)]
+        input: String,
+    },
+    DumpIds {
+        /// Input directory path
+        #[clap(short, long)]
+        input: String,
+    },
+    DisplayNameSearch {
+        /// Input directory path
+        #[clap(short, long)]
+        input: String,
+        /// Search query
+        #[clap(short, long)]
+        query: String,
+    },
+    RtSearch {
+        /// Input directory path
         #[clap(short, long)]
         input: String,
     },

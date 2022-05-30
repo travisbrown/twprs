@@ -8,7 +8,7 @@ use twprs_db::db::ProfileDb;
 fn main() -> Result<(), Error> {
     let opts: Opts = Opts::parse();
     let _ = twprs::cli::init_logging(opts.verbose)?;
-    let db = ProfileDb::open(opts.db, false)?;
+    let db = ProfileDb::open(opts.db, true)?;
 
     match opts.command {
         Command::Import { input } => {
@@ -30,14 +30,47 @@ fn main() -> Result<(), Error> {
         Command::Count => {
             let mut user_count = 0;
             let mut screen_name_count = 0;
+            let mut verified = 0;
+            let mut protected = 0;
             for result in db.iter() {
                 let batch = result?;
 
                 user_count += 1;
                 screen_name_count += batch.len();
+
+                if let Some((_, profile)) = batch.last() {
+                    if profile.verified {
+                        verified += 1;
+                    }
+                    if profile.protected {
+                        protected += 1;
+                    }
+                }
             }
 
             println!("{} users, {} screen names", user_count, screen_name_count);
+            println!("{} verified, {} protected", verified, protected);
+        }
+        Command::CountRaw => {
+            let mut user_ids = std::collections::HashSet::new();
+            let mut screen_name_count = 0;
+
+            for result in db.raw_iter() {
+                let (user_id, (_, user)) = result?;
+
+                user_ids.insert(user_id);
+                screen_name_count += 1;
+            }
+
+            println!(
+                "{} users, {} screen names",
+                user_ids.len(),
+                screen_name_count
+            );
+        }
+        Command::Stats => {
+            println!("Estimate the number of keys: {}", db.estimate_key_count()?);
+            println!("{:?}", db.statistics());
         }
         Command::ScreenNames => {
             for result in db.iter() {
@@ -174,6 +207,71 @@ fn main() -> Result<(), Error> {
             for (_, m) in matches {
                 println!("{}", m);
             }*/
+        }
+        Command::SuspensionReport { deactivations } => {
+            let log = twprs_db::deactivation::Log::read(File::open(deactivations)?)?;
+            let suspended_user_ids = log.ever_suspended();
+
+            let mut suspended_user_profiles: HashMap<u64, User> = HashMap::new();
+            let mut screen_name_change_user_profiles: HashMap<u64, Vec<_>> = HashMap::new();
+
+            for user_id in &suspended_user_ids {
+                let batch = db.lookup(*user_id)?;
+
+                if let Some((_, most_recent)) = batch.last() {
+                    if suspended_user_ids.contains(&most_recent.id()) {
+                        suspended_user_profiles.insert(most_recent.id(), most_recent.clone());
+                    }
+
+                    if batch.len() > 1 {
+                        screen_name_change_user_profiles.insert(most_recent.id(), batch);
+                    }
+                } /* else {
+                      log::error!("Empty user result when reading database");
+                  }*/
+            }
+
+            let mut suspension_report = File::create("suspensions.csv")?;
+            let mut not_found = 0;
+
+            for (user_id, suspension, reversal) in log.suspensions() {
+                if let Some(profile) = suspended_user_profiles.get(&user_id) {
+                    writeln!(
+                        suspension_report,
+                        "{},{},{},{},{},{},{},{},{}",
+                        suspension.timestamp(),
+                        reversal
+                            .map(|timestamp| timestamp.timestamp().to_string())
+                            .unwrap_or_default(),
+                        profile.id(),
+                        profile
+                            .created_at()
+                            .map(|timestamp| timestamp.timestamp().to_string())
+                            .unwrap_or_default(),
+                        profile.screen_name,
+                        profile.verified,
+                        profile.protected,
+                        profile.followers_count,
+                        profile.profile_image_url_https
+                    )?;
+                } else {
+                    writeln!(
+                        suspension_report,
+                        "{},{},{},,,,,,",
+                        suspension.timestamp(),
+                        reversal
+                            .map(|timestamp| timestamp.timestamp().to_string())
+                            .unwrap_or_default(),
+                        user_id
+                    )?;
+                    not_found += 1;
+                }
+            }
+
+            log::info!(
+                "Could not find profiles for {} suspended accounts",
+                not_found
+            );
         }
         Command::Reports {
             deactivations,
@@ -321,8 +419,15 @@ enum Command {
         id: u64,
     },
     Count,
+    CountRaw,
+    Stats,
     ScreenNames,
     Statuses,
+    SuspensionReport {
+        /// Deactivations file path
+        #[clap(long)]
+        deactivations: String,
+    },
     Reports {
         /// Deactivations file path
         #[clap(long)]
