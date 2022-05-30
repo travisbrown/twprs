@@ -30,14 +30,26 @@ fn main() -> Result<(), Error> {
         Command::Count => {
             let mut user_count = 0;
             let mut screen_name_count = 0;
+            let mut verified = 0;
+            let mut protected = 0;
             for result in db.iter() {
                 let batch = result?;
 
                 user_count += 1;
                 screen_name_count += batch.len();
+
+                if let Some((_, profile)) = batch.last() {
+                    if profile.verified {
+                        verified += 1;
+                    }
+                    if profile.protected {
+                        protected += 1;
+                    }
+                }
             }
 
             println!("{} users, {} screen names", user_count, screen_name_count);
+            println!("{} verified, {} protected", verified, protected);
         }
         Command::ScreenNames => {
             for result in db.iter() {
