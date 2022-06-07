@@ -99,6 +99,20 @@ fn main() -> Result<(), Error> {
                 }
             }
         }
+        Command::Withheld => {
+            for result in db.iter() {
+                let batch = result?;
+
+                if batch
+                    .iter()
+                    .any(|(_, user)| !user.withheld_in_countries.is_empty())
+                {
+                    if let Some((_, most_recent)) = batch.last() {
+                        println!("{}", serde_json::to_value(most_recent)?);
+                    }
+                }
+            }
+        }
         Command::Bio { query } => {
             let keywords = query
                 .split(",")
@@ -444,4 +458,5 @@ enum Command {
         #[clap(long)]
         query: String,
     },
+    Withheld,
 }
