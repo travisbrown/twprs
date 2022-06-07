@@ -1,9 +1,5 @@
 use clap::Parser;
-use flate2::read::GzDecoder;
-use std::collections::HashSet;
-use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
-use std::path::Path;
+use std::io::BufRead;
 use twprs::model::User;
 
 fn main() -> Result<(), Error> {
