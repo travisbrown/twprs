@@ -68,6 +68,23 @@ fn main() -> Result<(), Error> {
                 screen_name_count
             );
         }
+        Command::Between { first, last } => {
+            let mut profiles = vec![];
+
+            for result in db.raw_iter() {
+                let (_, (_, user)) = result?;
+
+                if user.snapshot > first && user.snapshot < last {
+                    profiles.push(user);
+                }
+            }
+
+            profiles.sort_by_key(|profile| (profile.snapshot, profile.id));
+
+            for profile in profiles {
+                println!("{}", serde_json::to_value(profile)?);
+            }
+        }
         Command::Stats => {
             println!("Estimate the number of keys: {}", db.estimate_key_count()?);
             println!("{:?}", db.statistics());
@@ -79,6 +96,31 @@ fn main() -> Result<(), Error> {
                     println!("{},{}", most_recent.id, most_recent.screen_name);
                 } else {
                     log::error!("Empty user result when reading database");
+                }
+            }
+        }
+        Command::SnapshotAge => {
+            for result in db.iter() {
+                let batch = result?;
+                if let Some((_, most_recent)) = batch.last() {
+                    println!("{},{}", most_recent.id, most_recent.snapshot);
+                } else {
+                    log::error!("Empty user result when reading database");
+                }
+            }
+        }
+        Command::AllScreenNames => {
+            for result in db.iter() {
+                let batch = result?;
+
+                for (first, profile) in batch {
+                    println!(
+                        "{},{},{},{}",
+                        profile.id,
+                        profile.screen_name,
+                        first.timestamp(),
+                        profile.snapshot
+                    );
                 }
             }
         }
@@ -112,6 +154,100 @@ fn main() -> Result<(), Error> {
                     }
                 }
             }
+        }
+        Command::Urls { query } => {
+            /*let keywords = query
+            .split(",")
+            .map(|keyword| keyword.to_lowercase())
+            .collect::<Vec<_>>();*/
+            let keyword = query.to_lowercase();
+
+            for result in db.iter() {
+                let batch = result?;
+
+                for (_, profile) in batch {
+                    if let Some(ref entities) = profile.entities {
+                        if entities
+                            .url
+                            .as_ref()
+                            .map(|urls| {
+                                urls.urls.iter().any(|url| {
+                                    url.expanded_url
+                                        .as_ref()
+                                        .map(|url| url.to_lowercase().contains(&keyword))
+                                        .unwrap_or(false)
+                                })
+                            })
+                            .unwrap_or(false)
+                            || entities
+                                .description
+                                .as_ref()
+                                .map(|urls| {
+                                    urls.urls.iter().any(|url| {
+                                        url.expanded_url
+                                            .as_ref()
+                                            .map(|url| url.to_lowercase().contains(&keyword))
+                                            .unwrap_or(false)
+                                    })
+                                })
+                                .unwrap_or(false)
+                        {
+                            println!("{}", serde_json::to_value(profile)?);
+                        }
+                    }
+                }
+            }
+
+            /*let hits = keywords
+                    .iter()
+                    .map(|keyword| {
+                        batch.iter().any(|(_, profile)| {
+                            if let Some(entities) = profile.entities {
+                                entities
+                                    .url
+                                    .map(|urls| {
+                                        urls.exists(|url| {
+                                            url.expanded_url
+                                                .map(|url| url.to_lowercase().contains(keyword))
+                                                .unwrap_or(false)
+                                        })
+                                    })
+                                    .unwrap_or(false)
+                                    || entities
+                                        .description
+                                        .map(|urls| {
+                                            urls.exists(|url| {
+                                                url.expanded_url
+                                                    .map(|url| url.to_lowercase().contains(keyword))
+                                                    .unwrap_or(false)
+                                            })
+                                        })
+                                        .unwrap_or(false)
+                            } else {
+                                false
+                            }
+                        })
+                    })
+                    .collect::<Vec<_>>();
+
+                if hits.iter().any(|hit| *hit) {
+                    if let Some((_, most_recent)) = batch.last() {
+                        let results = hits
+                            .iter()
+                            .map(|hit| if *hit { "1" } else { "0" })
+                            .collect::<Vec<_>>()
+                            .join(",");
+                        println!(
+                            "{},{},{},{},{}",
+                            most_recent.id,
+                            most_recent.screen_name,
+                            most_recent.followers_count,
+                            most_recent.friends_count,
+                            results
+                        );
+                    }
+                }
+            }*/
         }
         Command::Bio { query } => {
             let keywords = query
@@ -252,7 +388,7 @@ fn main() -> Result<(), Error> {
                 if let Some(profile) = suspended_user_profiles.get(&user_id) {
                     writeln!(
                         suspension_report,
-                        "{},{},{},{},{},{},{},{},{}",
+                        "{},{},{},{},{},{},{},{},{},{}",
                         suspension.timestamp(),
                         reversal
                             .map(|timestamp| timestamp.timestamp().to_string())
@@ -266,12 +402,13 @@ fn main() -> Result<(), Error> {
                         profile.verified,
                         profile.protected,
                         profile.followers_count,
-                        profile.profile_image_url_https
+                        profile.profile_image_url_https,
+                        profile.withheld_in_countries.join(";")
                     )?;
                 } else {
                     writeln!(
                         suspension_report,
-                        "{},{},{},,,,,,",
+                        "{},{},{},,,,,,,",
                         suspension.timestamp(),
                         reversal
                             .map(|timestamp| timestamp.timestamp().to_string())
@@ -308,9 +445,9 @@ fn main() -> Result<(), Error> {
                     if batch.len() > 1 {
                         screen_name_change_user_profiles.insert(most_recent.id(), batch);
                     }
-                } else {
-                    log::error!("Empty user result when reading database");
-                }
+                } /*else {
+                      log::error!("Empty user result when reading database");
+                  }*/
             }
 
             let mut suspension_report = File::create(suspensions)?;
@@ -320,7 +457,7 @@ fn main() -> Result<(), Error> {
                 if let Some(profile) = suspended_user_profiles.get(&user_id) {
                     writeln!(
                         suspension_report,
-                        "{},{},{},{},{},{},{},{},{}",
+                        "{},{},{},{},{},{},{},{},{},{}",
                         suspension.timestamp(),
                         reversal
                             .map(|timestamp| timestamp.timestamp().to_string())
@@ -334,12 +471,13 @@ fn main() -> Result<(), Error> {
                         profile.verified,
                         profile.protected,
                         profile.followers_count,
-                        profile.profile_image_url_https
+                        profile.profile_image_url_https,
+                        profile.withheld_in_countries.join(";")
                     )?;
                 } else {
                     writeln!(
                         suspension_report,
-                        "{},{},{},,,,,,",
+                        "{},{},{},,,,,,,",
                         suspension.timestamp(),
                         reversal
                             .map(|timestamp| timestamp.timestamp().to_string())
@@ -434,8 +572,14 @@ enum Command {
     },
     Count,
     CountRaw,
+    Between {
+        first: i64,
+        last: i64,
+    },
     Stats,
     ScreenNames,
+    AllScreenNames,
+    SnapshotAge,
     Statuses,
     SuspensionReport {
         /// Deactivations file path
@@ -454,6 +598,11 @@ enum Command {
         screen_name_changes: String,
     },
     Bio {
+        /// Keywords
+        #[clap(long)]
+        query: String,
+    },
+    Urls {
         /// Keywords
         #[clap(long)]
         query: String,
