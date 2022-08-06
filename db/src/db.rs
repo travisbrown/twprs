@@ -81,7 +81,7 @@ impl ProfileDb {
         Ok(users)
     }
 
-    pub fn iter(&self) -> ProfileIterator<DBIterator> {
+    pub fn iter(&self) -> ProfileIterator<'_> {
         ProfileIterator {
             underlying: self
                 .db
@@ -91,22 +91,10 @@ impl ProfileDb {
         }
     }
 
-    pub fn raw_iter(
-        &self,
-    ) -> impl Iterator<Item = Result<(u64, (DateTime<Utc>, User)), Error>> + '_ {
-        self.db
-            .iterator(IteratorMode::From(&[], rocksdb::Direction::Forward))
-            .map(|(key, value)| {
-                let user_id = u64::from_be_bytes(
-                    key[0..8]
-                        .try_into()
-                        .map_err(|_| Error::InvalidKey(key.to_vec()))?,
-                );
-
-                let (timestamp, user) = parse_value(value)?;
-
-                Ok((user_id, (timestamp, user)))
-            })
+    pub fn raw_iter(&self) -> ProfileRawIterator {
+        ProfileRawIterator {
+            underlying: self.db.iterator(IteratorMode::Start),
+        }
     }
 
     pub fn update(&self, user: &User) -> Result<(), Error> {
@@ -129,13 +117,43 @@ impl ProfileDb {
     }
 }
 
-pub struct ProfileIterator<I> {
-    underlying: I,
+pub struct ProfileRawIterator<'a> {
+    underlying: DBIterator<'a>,
+}
+
+impl Iterator for ProfileRawIterator<'_> {
+    type Item = Result<(u64, (DateTime<Utc>, User)), Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.underlying.next() {
+            Some((key, value)) => Some(parse_pair(&key, &value)),
+            None => match self.underlying.status() {
+                Ok(()) => None,
+                Err(error) => Some(Err(Error::from(error))),
+            },
+        }
+    }
+}
+
+fn parse_pair(key: &[u8], value: &[u8]) -> Result<(u64, (DateTime<Utc>, User)), Error> {
+    let user_id = u64::from_be_bytes(
+        key[0..8]
+            .try_into()
+            .map_err(|_| Error::InvalidKey(key.to_vec()))?,
+    );
+
+    let (timestamp, user) = parse_value(value)?;
+
+    Ok((user_id, (timestamp, user)))
+}
+
+pub struct ProfileIterator<'a> {
+    underlying: DBIterator<'a>,
     current: Option<(DateTime<Utc>, User)>,
     finished: bool,
 }
 
-impl<I: Iterator<Item = (Box<[u8]>, Box<[u8]>)>> Iterator for ProfileIterator<I> {
+impl Iterator for ProfileIterator<'_> {
     type Item = Result<Vec<(DateTime<Utc>, User)>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -169,7 +187,7 @@ impl<I: Iterator<Item = (Box<[u8]>, Box<[u8]>)>> Iterator for ProfileIterator<I>
                 }
             }
             None => {
-                if self.finished {
+                let result = if self.finished {
                     None
                 } else {
                     match self.underlying.next() {
@@ -182,6 +200,14 @@ impl<I: Iterator<Item = (Box<[u8]>, Box<[u8]>)>> Iterator for ProfileIterator<I>
                         },
                         None => None,
                     }
+                };
+
+                match result {
+                    Some(value) => Some(value),
+                    None => match self.underlying.status() {
+                        Ok(()) => None,
+                        Err(error) => Some(Err(Error::from(error))),
+                    },
                 }
             }
         }
