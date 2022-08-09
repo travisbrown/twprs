@@ -1,7 +1,7 @@
 use super::queue::UserQueue;
 use chrono::Utc;
 use egg_mode_extras::{client::TokenType, Client};
-use futures::{StreamExt, TryStreamExt};
+use futures::TryStreamExt;
 use serde_json::Value;
 
 #[derive(thiserror::Error, Debug)]

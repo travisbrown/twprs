@@ -59,10 +59,7 @@ impl UserQueue {
     }
 
     /// Process a batch of IDs that were seen unfollowing or being unfollowed.
-    pub async fn process_removals<I: IntoIterator<Item = u64> + Send + 'static>(
-        &self,
-        ids: I,
-    ) -> () {
+    pub async fn process_removals<I: IntoIterator<Item = u64> + Send + 'static>(&self, ids: I) {
         let ids = ids.into_iter().collect::<HashSet<_>>();
 
         join!(
@@ -75,10 +72,7 @@ impl UserQueue {
     }
 
     /// Process a batch of IDs that were seen following or being followed.
-    pub async fn process_additions<I: IntoIterator<Item = u64> + Send + 'static>(
-        &self,
-        ids: I,
-    ) -> () {
+    pub async fn process_additions<I: IntoIterator<Item = u64> + Send + 'static>(&self, ids: I) {
         let ids = ids.into_iter().collect::<HashSet<_>>();
 
         join!(
@@ -89,10 +83,7 @@ impl UserQueue {
         );
     }
 
-    pub async fn process_updates<I: IntoIterator<Item = u64> + Send + 'static>(
-        &self,
-        ids: I,
-    ) -> () {
+    pub async fn process_updates<I: IntoIterator<Item = u64> + Send + 'static>(&self, ids: I) {
         let now = Utc::now();
         let scores = self.scores.read().await;
 
@@ -110,7 +101,7 @@ impl UserQueue {
     pub async fn process_deactivations<I: IntoIterator<Item = u64> + Send + 'static>(
         &self,
         ids: I,
-    ) -> () {
+    ) {
         let now = Utc::now();
 
         self.recently_deactivated
@@ -130,7 +121,7 @@ impl UserQueue {
         (base + (days * 24.0 * 60.0 * 60.0)) as u32
     }
 
-    async fn decrement_scores(&self, ids: HashSet<u64>) -> () {
+    async fn decrement_scores(&self, ids: HashSet<u64>) {
         self.scores
             .with_write(move |mut scores| {
                 for id in ids {
@@ -144,7 +135,7 @@ impl UserQueue {
             .await
     }
 
-    async fn increment_scores(&self, ids: HashSet<u64>) -> () {
+    async fn increment_scores(&self, ids: HashSet<u64>) {
         self.scores
             .with_write(move |mut scores| {
                 for id in ids {
@@ -172,7 +163,7 @@ impl UserQueue {
             .await
     }
 
-    async fn prioritize(&self, ids: HashSet<u64>, priority: u32) -> () {
+    async fn prioritize(&self, ids: HashSet<u64>, priority: u32) {
         self.underlying
             .with_write(move |mut queue| {
                 for id in ids {
@@ -183,7 +174,7 @@ impl UserQueue {
             .await
     }
 
-    async fn prioritize_new(&self, ids: HashSet<u64>) -> () {
+    async fn prioritize_new(&self, ids: HashSet<u64>) {
         self.underlying
             .with_write(move |mut queue| {
                 for id in ids {

@@ -113,7 +113,7 @@ impl ProfileDb {
         let screen_name_bytes = screen_name_clean.as_bytes();
         let mut key = Vec::with_capacity(screen_name_bytes.len() + 8);
         key.extend_from_slice(&user_id.to_be_bytes());
-        key.extend_from_slice(&screen_name_bytes);
+        key.extend_from_slice(screen_name_bytes);
         key
     }
 }

@@ -1,7 +1,7 @@
 use octocrab::{
-    models::{pulls::PullRequest, IssueState, User},
+    models::IssueState,
     params::{issues::Sort, State},
-    Octocrab, Page,
+    Octocrab,
 };
 
 pub struct Repo {

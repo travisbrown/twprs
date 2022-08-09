@@ -14,7 +14,7 @@ use twprs_db::db::ProfileDb;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let opts: Opts = Opts::parse();
-    let _ = twprs::cli::init_logging(opts.verbose)?;
+    twprs::cli::init_logging(opts.verbose)?;
 
     match opts.command {
         Command::Gh { token } => {
@@ -118,7 +118,7 @@ fn read_bad_users<P: AsRef<Path>>(path: P) -> Result<HashMap<u64, usize>, report
         .map(|(index, line)| {
             let line = line?;
             let user_id = line
-                .split(",")
+                .split(',')
                 .next()
                 .and_then(|field| field.parse::<u64>().ok())
                 .ok_or_else(|| report::Error::UnexpectedCsvLine(line.clone()))?;

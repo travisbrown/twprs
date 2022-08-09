@@ -269,8 +269,8 @@ impl Report {
         let mut result = vec![];
 
         for user_id in &self.follower_ids {
-            if let Some(ranking) = bad.get(&user_id) {
-                if let Some(profiles) = self.known_users.get(&user_id) {
+            if let Some(ranking) = bad.get(user_id) {
+                if let Some(profiles) = self.known_users.get(user_id) {
                     result.push((*ranking, *user_id, profiles.as_slice()));
                 }
             }
@@ -284,8 +284,8 @@ impl Report {
         let mut result = vec![];
 
         for user_id in &self.followed_ids {
-            if let Some(ranking) = bad.get(&user_id) {
-                if let Some(profiles) = self.known_users.get(&user_id) {
+            if let Some(ranking) = bad.get(user_id) {
+                if let Some(profiles) = self.known_users.get(user_id) {
                     result.push((*ranking, *user_id, profiles.as_slice()));
                 }
             }
@@ -562,7 +562,7 @@ fn user_row(
             format!(
                 ", {}",
                 screen_names
-                    .into_iter()
+                    .iter()
                     .take(1)
                     .cloned()
                     .collect::<Vec<_>>()

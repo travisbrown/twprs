@@ -11,7 +11,7 @@ async fn main() -> Result<(), Error> {
     let stdin = std::io::stdin();
     let user_ids = stdin.lock().lines().map(|line| {
         let line = line?;
-        let parts = line.split(",").collect::<Vec<_>>();
+        let parts = line.split(',').collect::<Vec<_>>();
 
         let result: Result<_, Error> = Ok((
             parts[0].parse::<u64>().unwrap(),

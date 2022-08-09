@@ -127,7 +127,7 @@ impl Log {
             .entries
             .iter()
             .filter_map(|(user_id, entries)| {
-                if !entries.is_empty() && Self::validate_entries(&entries) {
+                if !entries.is_empty() && Self::validate_entries(entries) {
                     None
                 } else {
                     Some(*user_id)

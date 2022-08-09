@@ -83,5 +83,5 @@ fn get_user(value: &Value, snapshot: DateTime<Utc>) -> Result<User, Error> {
         );
     }
 
-    serde_json::from_value(user_value).map_err(|error| Error::InvalidUser(error))
+    serde_json::from_value(user_value).map_err(Error::InvalidUser)
 }

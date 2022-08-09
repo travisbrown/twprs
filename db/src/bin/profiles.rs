@@ -7,7 +7,7 @@ use twprs_db::db::ProfileDb;
 
 fn main() -> Result<(), Error> {
     let opts: Opts = Opts::parse();
-    let _ = twprs::cli::init_logging(opts.verbose)?;
+    twprs::cli::init_logging(opts.verbose)?;
     let db = ProfileDb::open(opts.db, true)?;
 
     match opts.command {
@@ -251,7 +251,7 @@ fn main() -> Result<(), Error> {
         }
         Command::Bio { query } => {
             let keywords = query
-                .split(",")
+                .split(',')
                 .map(|keyword| keyword.to_lowercase())
                 .collect::<Vec<_>>();
 
@@ -504,7 +504,7 @@ fn main() -> Result<(), Error> {
                 let mut last_screen_name = "".to_string();
 
                 for (first_timestamp, profile) in profiles {
-                    if last_screen_name != "" {
+                    if !last_screen_name.is_empty() {
                         writeln!(
                             screen_name_change_report,
                             "{},{},{},{},{},{},{},{}",

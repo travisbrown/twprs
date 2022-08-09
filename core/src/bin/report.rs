@@ -43,7 +43,7 @@ fn main() -> Result<(), Error> {
 
         let mut status = String::new();
         if user.protected {
-            status.push_str("🔒");
+            status.push('🔒');
         }
         if user.verified {
             status.push_str("✔️");
