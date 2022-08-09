@@ -62,7 +62,8 @@ impl ProfileDb {
         let iterator = self.db.prefix_iterator(prefix);
         let mut users: Vec<(DateTime<Utc>, User)> = vec![];
 
-        for (key, value) in iterator {
+        for result in iterator {
+            let (key, value) = result?;
             let next_user_id = u64::from_be_bytes(
                 key[0..8]
                     .try_into()
@@ -125,13 +126,11 @@ impl Iterator for ProfileRawIterator<'_> {
     type Item = Result<(u64, (DateTime<Utc>, User)), Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.underlying.next() {
-            Some((key, value)) => Some(parse_pair(&key, &value)),
-            None => match self.underlying.status() {
-                Ok(()) => None,
-                Err(error) => Some(Err(Error::from(error))),
-            },
-        }
+        self.underlying.next().map(|result| {
+            result
+                .map_err(Error::from)
+                .and_then(|(key, value)| parse_pair(&key, &value))
+        })
     }
 }
 
@@ -164,7 +163,7 @@ impl Iterator for ProfileIterator<'_> {
 
                 loop {
                     match self.underlying.next() {
-                        Some((_, value)) => match parse_value(value) {
+                        Some(Ok((_, value))) => match parse_value(value) {
                             Ok((next_timestamp, next_user)) => {
                                 if next_user.id == user_id {
                                     batch.push((next_timestamp, next_user));
@@ -179,6 +178,9 @@ impl Iterator for ProfileIterator<'_> {
                                 return Some(Err(error));
                             }
                         },
+                        Some(Err(error)) => {
+                            return Some(Err(Error::from(error)));
+                        }
                         None => {
                             self.finished = true;
                             return Some(Ok(batch));
@@ -187,27 +189,20 @@ impl Iterator for ProfileIterator<'_> {
                 }
             }
             None => {
-                let result = if self.finished {
+                if self.finished {
                     None
                 } else {
                     match self.underlying.next() {
-                        Some((_, value)) => match parse_value(value) {
+                        Some(Ok((_, value))) => match parse_value(value) {
                             Ok((next_timestamp, next_user)) => {
                                 self.current = Some((next_timestamp, next_user));
                                 self.next()
                             }
                             Err(error) => Some(Err(error)),
                         },
+                        Some(Err(error)) => Some(Err(Error::from(error))),
                         None => None,
                     }
-                };
-
-                match result {
-                    Some(value) => Some(value),
-                    None => match self.underlying.status() {
-                        Ok(()) => None,
-                        Err(error) => Some(Err(Error::from(error))),
-                    },
                 }
             }
         }

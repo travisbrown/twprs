@@ -516,7 +516,7 @@ fn main() -> Result<(), Error> {
                             last_screen_name,
                             profile.screen_name,
                             profile.profile_image_url_https
-                        );
+                        )?;
                     }
                     last_screen_name = profile.screen_name.clone();
                 }

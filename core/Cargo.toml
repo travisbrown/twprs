@@ -6,7 +6,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-apache-avro = { git = "https://github.com/apache/avro", features = ["snappy"] }
+apache-avro = { version = "0.14", features = ["snappy"] }
 bzip2 = "0.4"
 chrono = "0.4"
 clap = { version = "3", features = ["derive"] }
@@ -28,7 +28,7 @@ simplelog = "0.12"
 tar = "0.4"
 thiserror = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-zip = "0.6"
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 proptest = "1.0"

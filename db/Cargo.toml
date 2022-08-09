@@ -6,12 +6,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-apache-avro = { git = "https://github.com/apache/avro", features = ["snappy"] }
+apache-avro = { version = "0.14", features = ["snappy"] }
 chrono = "0.4"
 clap = { version = "3", features = ["derive"] }
 egg-mode-extras = "0.2.1"
 log = "0.4"
-rocksdb = "0.18"
+rocksdb = "0.19"
 serde_json = { version = "1", features = ["preserve_order"] }
 simplelog = "0.12"
 thiserror = "1"
