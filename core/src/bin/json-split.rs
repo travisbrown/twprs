@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
 
-const DAY_PARTITIONS: u32 = 2;
+const DAY_PARTITIONS: u32 = 6;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = std::env::args().collect::<Vec<_>>();

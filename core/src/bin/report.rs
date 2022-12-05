@@ -12,20 +12,35 @@ fn main() -> Result<(), Error> {
         .map(|line| line.map_err(Error::from))
         .map(|line| {
             let line = line?;
-            Ok(serde_json::from_str::<User>(&line)?)
+            if line.starts_with('{') {
+                Ok((None, serde_json::from_str::<User>(&line)?))
+            } else {
+                let (rank_str, json) = line.split_once(',').expect("Invalid line");
+                let rank = rank_str.parse::<u64>().expect("Invalid rank");
+                Ok((Some(rank), serde_json::from_str::<User>(&json)?))
+            }
         })
         .collect::<Result<Vec<_>, Error>>()?;
 
-    users.sort_by_key(|user| std::cmp::Reverse(user.followers_count));
+    if opts.sort {
+        users.sort_by_key(|(_, user)| (user.id, std::cmp::Reverse(user.snapshot)));
+        users.dedup_by_key(|(_, user)| user.id);
+        users.sort_by_key(|(_, user)| std::cmp::Reverse(user.followers_count));
+    }
 
     println!(
         r#"<table><tr><th></th><th align="left">Twitter ID</th><th align="left">Screen name</th>"#
     );
-    println!(
-        r#"<th align="left">Created</th><th align="left">Status</th><th align="left">Follower count</th></tr>"#
+    print!(
+        r#"<th align="left">Created</th><th align="left">Status</th><th align="left">Followers</th>"#
     );
 
-    for user in users {
+    if let Some((Some(_), _)) = users.first() {
+        print!(r#"<th align="left">Ranking</th>"#);
+    }
+    println!("</tr>");
+
+    for (rank, user) in users {
         let img = format!(
             "<a href=\"{}\"><img src=\"{}\" width=\"40px\" height=\"40px\" align=\"center\"/></a>",
             user.profile_image_url_https, user.profile_image_url_https
@@ -49,8 +64,8 @@ fn main() -> Result<(), Error> {
             status.push_str("✔️");
         }
 
-        println!(
-            "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td align=\"center\">{}</td><td>{}</td></tr>",
+        print!(
+            "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td align=\"center\">{}</td><td>{}</td>",
             img,
             id_link,
             screen_name_link,
@@ -58,6 +73,12 @@ fn main() -> Result<(), Error> {
             status,
             user.followers_count
         );
+
+        if let Some(rank) = rank {
+            print!("<td>{}</td>", rank);
+        }
+
+        println!("</tr>");
     }
 
     println!(r#"</table>"#);
@@ -81,4 +102,6 @@ struct Opts {
     /// Level of verbosity
     #[clap(short, long, parse(from_occurrences))]
     verbose: i32,
+    #[clap(long)]
+    sort: bool,
 }

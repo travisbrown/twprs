@@ -11,6 +11,7 @@ chrono = "0.4"
 clap = { version = "3", features = ["derive"] }
 egg-mode-extras = "0.2.1"
 log = "0.4"
+priority-queue = "1"
 rocksdb = "0.19"
 serde_json = { version = "1", features = ["preserve_order"] }
 simplelog = "0.12"

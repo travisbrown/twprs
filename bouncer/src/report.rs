@@ -33,10 +33,10 @@ impl Report {
             .await?;
 
         let follower_ids = client
-            .follower_ids(screen_name.clone(), TokenType::App)
+            .follower_ids(screen_name.clone(), TokenType::User)
             .try_collect::<HashSet<_>>();
         let followed_ids = client
-            .followed_ids(screen_name, TokenType::App)
+            .followed_ids(screen_name, TokenType::User)
             .try_collect::<HashSet<_>>();
 
         let (follower_ids, followed_ids) = futures::try_join!(follower_ids, followed_ids)?;

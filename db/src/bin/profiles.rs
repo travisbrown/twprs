@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
@@ -99,14 +100,28 @@ fn main() -> Result<(), Error> {
                 }
             }
         }
-        Command::SnapshotAge => {
+        Command::SnapshotAge { count } => {
+            let mut queue = priority_queue::DoublePriorityQueue::with_capacity(count);
             for result in db.iter() {
                 let batch = result?;
                 if let Some((_, most_recent)) = batch.last() {
-                    println!("{},{}", most_recent.id, most_recent.snapshot);
+                    let snapshot = Reverse(most_recent.snapshot);
+                    let min = queue.peek_min().map(|(_, snapshot)| *snapshot);
+
+                    if min.filter(|&value| snapshot >= value).is_some() || queue.len() < count {
+                        queue.push(most_recent.id, snapshot);
+
+                        if queue.len() > count {
+                            queue.pop_min();
+                        }
+                    }
                 } else {
                     log::error!("Empty user result when reading database");
                 }
+            }
+
+            for (id, snapshot) in queue.into_sorted_iter().rev() {
+                println!("{},{}", id, snapshot.0);
             }
         }
         Command::AllScreenNames => {
@@ -579,7 +594,11 @@ enum Command {
     Stats,
     ScreenNames,
     AllScreenNames,
-    SnapshotAge,
+    SnapshotAge {
+        /// How many oldest values to include
+        #[clap(long, default_value = "1000000")]
+        count: usize,
+    },
     Statuses,
     SuspensionReport {
         /// Deactivations file path
