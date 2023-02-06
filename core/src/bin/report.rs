@@ -5,6 +5,8 @@ use twprs::model::User;
 fn main() -> Result<(), Error> {
     let opts: Opts = Opts::parse();
 
+    let limit = opts.limit.unwrap_or(usize::MAX);
+
     let stdin = std::io::stdin();
     let mut users = stdin
         .lock()
@@ -27,6 +29,8 @@ fn main() -> Result<(), Error> {
         users.dedup_by_key(|(_, user)| user.id);
         users.sort_by_key(|(_, user)| std::cmp::Reverse(user.followers_count));
     }
+
+    users.truncate(limit);
 
     println!(
         r#"<table><tr><th></th><th align="left">Twitter ID</th><th align="left">Screen name</th>"#
@@ -104,4 +108,6 @@ struct Opts {
     verbose: i32,
     #[clap(long)]
     sort: bool,
+    #[clap(long)]
+    limit: Option<usize>,
 }
